@@ -58,3 +58,4 @@ ridePriceSchema.statics.updatePrices = async function(newPrices) {
 };
 
 module.exports = mongoose.models.RidePrice || mongoose.model('RidePrice', ridePriceSchema);
+
