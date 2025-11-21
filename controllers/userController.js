@@ -243,10 +243,21 @@ exports.getCurrentUserProfile = async (req, res) => {
   }
 };
 
-// Also update the getProfile method to be consistent
+
 exports.getProfile = async (req, res) => {
   try {
-    const user = await Registration.findById(req.user.id);
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'No token provided' 
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const user = await Registration.findById(decoded.id);
+    
     if (!user) {
       return res.status(404).json({ 
         success: false,
@@ -254,7 +265,7 @@ exports.getProfile = async (req, res) => {
       });
     }
     
-    // Build proper image URL if profile picture exists
+    // Build proper image URL
     let profilePictureUrl = '';
     if (user.profilePicture) {
       const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001';
@@ -279,11 +290,25 @@ exports.getProfile = async (req, res) => {
     
     res.json({
       success: true,
-      user: userData,
-      data: userData
+      user: userData
     });
   } catch (err) {
     console.error("❌ Error fetching profile:", err.message);
+    
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Invalid token' 
+      });
+    }
+    
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Token expired' 
+      });
+    }
+    
     res.status(500).json({ 
       success: false,
       error: err.message 
