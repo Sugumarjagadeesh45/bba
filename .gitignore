@@ -49,7 +49,7 @@ jspm_packages/
 .env
 
 # Uploads directory
-uploads/
+# uploads/
 
 # IDE files
 .vscode/
