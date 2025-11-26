@@ -1,15 +1,57 @@
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'Registration', required: true },
-  customerId: { type: String, required: true },
-  orderId: { type: String, required: true, unique: true },
+  orderId: { 
+    type: String, 
+    required: true, 
+    unique: true 
+  },
+  user: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Registration', 
+    required: true 
+  },
+  customerId: { 
+    type: String, 
+    required: true 
+  },
+  customerName: {
+    type: String,
+    required: true
+  },
+  customerPhone: {
+    type: String,
+    required: true
+  },
+  customerEmail: {
+    type: String,
+    default: ''
+  },
+  customerAddress: {
+    type: String,
+    required: true
+  },
   products: [{
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    quantity: { type: Number, required: true },
-    price: { type: Number, required: true }
+    productId: String,
+    name: String,
+    price: Number,
+    quantity: Number,
+    images: [String],
+    category: String
   }],
-  totalAmount: { type: Number, required: true },
+  totalAmount: { 
+    type: Number, 
+    required: true 
+  },
+  subtotal: Number,
+  shipping: { 
+    type: Number, 
+    default: 0 
+  },
+  tax: { 
+    type: Number, 
+    default: 0 
+  },
   deliveryAddress: {
     name: String,
     phone: String,
@@ -18,30 +60,40 @@ const orderSchema = new mongoose.Schema({
     city: String,
     state: String,
     pincode: String,
-    country: { type: String, default: 'India' }
+    country: { 
+      type: String, 
+      default: 'India' 
+    }
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled', 'returned', 'refunded'],
-    default: 'pending'
-  },
-  paymentStatus: {
-    type: String,
-    enum: ['pending', 'paid', 'failed', 'refunded'],
-    default: 'pending'
+    enum: [
+      'order_confirmed',
+      'processing', 
+      'packed',
+      'shipped',
+      'out_for_delivery',
+      'delivered',
+      'cancelled'
+    ],
+    default: 'order_confirmed'
   },
   paymentMethod: {
     type: String,
     enum: ['cash', 'wallet', 'card', 'upi'],
-    default: 'cash'
+    required: true
+  },
+  orderDate: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true
 });
 
-// Pre-save hook to generate order ID
+// Generate order ID
 orderSchema.pre('save', async function(next) {
-  if (this.isNew && !this.orderId) {
+  if (this.isNew) {
     const Counter = require('./user/customerId');
     const counter = await Counter.findOneAndUpdate(
       { _id: 'orderId' },
@@ -53,32 +105,4 @@ orderSchema.pre('save', async function(next) {
   next();
 });
 
-// Static method to get order statistics
-orderSchema.statics.getOrderStats = async function() {
-  const totalOrders = await this.countDocuments();
-  const deliveredOrders = await this.countDocuments({ status: 'delivered' });
-  const pendingOrders = await this.countDocuments({ status: { $in: ['pending', 'confirmed', 'preparing', 'out_for_delivery'] } });
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const ordersToday = await this.countDocuments({
-    createdAt: { $gte: today }
-  });
-  
-  // Calculate total sales
-  const salesResult = await this.aggregate([
-    { $match: { status: 'delivered' } },
-    { $group: { _id: null, totalSales: { $sum: '$totalAmount' } } }
-  ]);
-  
-  const totalSales = salesResult.length > 0 ? salesResult[0].totalSales : 0;
-  
-  return {
-    totalOrders,
-    deliveredOrders,
-    pendingOrders,
-    ordersToday,
-    totalSales
-  };
-};
-
-module.exports = mongoose.models.Order || mongoose.model('Order', orderSchema);
+module.exports = mongoose.model('Order', orderSchema);
